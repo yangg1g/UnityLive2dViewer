@@ -1,0 +1,76 @@
+ManifestFileVersion: 0
+CRC: 2706149843
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 10a464bb43a1bd942c09b48bb0a00651
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: bf2271acac2e413a49128163ddb8b5d8
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 23
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 33
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 65
+  Script: {instanceID: 0}
+- Class: 74
+  Script: {instanceID: 0}
+- Class: 91
+  Script: {instanceID: 0}
+- Class: 95
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: 3372c5c381b6c974d800b63180dd3cb2, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: c7f50d50833a74e449d14511b530c6f3, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 5232674eb30e10e43a9b49ee005ab6e9, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 66418793a3eeed947bf6d6e4e22cbaa7, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 504daa9a750090d4599037b8ffa4d0d1, type: 3}
+- Class: 137
+  Script: {instanceID: 0}
+- Class: 212
+  Script: {instanceID: 0}
+- Class: 213
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/Assets/Mesh/CS_parts_hair_1.asset
+- Assets/Assets/Mesh/CS_parts_hair_3.asset
+- Assets/Assets/Mesh/CS_parts_band_1.asset
+- Assets/Assets/Mesh/CS_parts_body.asset
+- Assets/Assets/AssetBundles/2dmodel_3p_constantias2_n/assetbundleresource/character_2d/2DModel_3P_ConstantiaS2_N.prefab
+- Assets/Assets/AnimationClip/3P_BConstantiaS2_N_2DModel_lobby_start.anim
+- Assets/Assets/AnimationClip/3P_BConstantiaS2_N_2DModel_lobby.anim
+- Assets/Assets/Mesh/CS_parts_gun.asset
+- Assets/Assets/Mesh/CS_parts_hair_4.asset
+- Assets/Assets/AnimatorController/3P_BConstantiaS2_N_2DModel.controller
+- Assets/Assets/AnimationClip/3P_BConstantiaS2_N_2DModel_lobby_Tep_breast.anim
+- Assets/Assets/Mesh/CS_parts_hair_2.asset
+- Assets/Assets/Material/3P_BConstantiaS2_N_parts.mat
+- Assets/Assets/AnimationClip/3P_BConstantiaS2_N_2DModel_lobby_idle.anim
+- Assets/Assets/Mesh/CS_parts_band_2.asset
+- Assets/Assets/Texture2D/3P_BConstantiaS2_N_parts.png
+- Assets/Assets/Mesh/CS_parts_scarf.asset
+- Assets/Assets/Mesh/CS_parts_chest.asset
+- Assets/Assets/Mesh/CS_parts_leg_l.asset
+- Assets/Assets/Mesh/Plane003.asset
+- Assets/Assets/Mesh/CS_parts_dog.asset
+- Assets/Assets/Mesh/CS_parts_leg_r.asset
+Dependencies: []
