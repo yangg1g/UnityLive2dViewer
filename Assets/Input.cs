@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.IO;
 
-public class Input : MonoBehaviour
+public class MyInput : MonoBehaviour
 {
     public int index = 0;
     public Image[] images;
@@ -147,10 +147,11 @@ public class Input : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        /*
         InputField myInput = this.GetComponent<InputField>();
         //myInput.onEndEdit.AddListener(MyEndEdit);
 
-        Recursive2(test);
+        //Recursive2(test);
 
         string path = "E:\\Documents\\Tencent Files\\1094766238\\FileRecv\\__data";
         AssetBundle ab = AssetBundle.LoadFromFile(path);
@@ -171,6 +172,7 @@ public class Input : MonoBehaviour
                 //gob.transform.position.Set(0,10,0);
             }
         }
+        */
     }
 
     // Update is called once per frame

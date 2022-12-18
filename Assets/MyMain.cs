@@ -8,6 +8,10 @@ using System;
 using System.IO;
 using System.Text;
 using System.Linq;
+using System.Drawing;
+using System.Drawing.Imaging;
+using B83.Win32;
+using SpringGUI;
 
 public static class BinaryReaderExtensions
 {
@@ -92,84 +96,95 @@ public class MyMain : MonoBehaviour
     {
 
         Texture2D tex = null;
-        byte[] fileData;
-
         if (File.Exists(filePath))
         {
-            fileData = File.ReadAllBytes(filePath);
-            tex = new Texture2D(2, 2);
-            tex.LoadImage(fileData); //..this will auto-resize the texture dimensions.
+            return LoadPNG(File.ReadAllBytes(filePath));
         }
         return tex;
     }
 
-    void Recursive(GameObject parentGameObject, Texture2D tex = null)
+    public static Texture2D LoadPNG(byte[] fileData)
     {
-        foreach (Transform child in parentGameObject.transform)
-        {
-            SkinnedMeshRenderer smr = child.gameObject.GetComponent<SkinnedMeshRenderer>();
-            if (smr && smr.sharedMaterial.shader.name != "Sprites/Default")
-            {
-                if(tex)
-                {
-                    smr.sharedMaterial.SetTexture("_MainTex", tex);
-                }
-                // Debug.Log(smr.sharedMaterial.GetTexture("_MainTex"));
-                smr.sharedMaterial.shader = Shader.Find("Sprites/Default");
-            }
-            SpriteRenderer sr = child.gameObject.GetComponent<SpriteRenderer>();
-            if (sr)
-            {
-                if (tex)
-                {
-                    sr.sharedMaterial.SetTexture("_MainTex", tex);
-                }
-                // Texture test = sr.sprite.texture;
-                // test = tex;
-                if (sr.sprite && tex)
-                {
-                    sr.sprite = Sprite.Create(tex, sr.sprite.rect, new Vector2(0.5f, 0.5f));
-                    // sr.sprite = Sprite.Create(tex, sr.sprite.rect, sr.sprite.pivot);
-                }
-                sr.sharedMaterial.shader = Shader.Find("Sprites/Default");
-            }
-            Recursive(child.gameObject, tex);
-        }
+
+        Texture2D tex = new Texture2D(2, 2);
+        tex.LoadImage(fileData);
+        return tex;
     }
 
-    void RecursiveV2(GameObject parentGameObject, Dictionary<string, Texture2D> map)
+    public Material FindMatrial(string name)
+    {
+        Type type = Type.GetType("UnityEngine.Material,UnityEngine.dll");
+        UnityEngine.Object[] objects = Resources.FindObjectsOfTypeAll(type);
+        for (int i = 0; i < objects.Length; i++)
+        {
+            //Debug.Log(objects[i].name);
+            if (objects[i].name == name)
+            {
+                return objects[i] as Material;
+            }
+        }
+        return null;
+    }
+
+
+    void PrefabRecursive(GameObject parentGameObject, Dictionary<string, Texture2D> map, List<UITreeData> Tree)
     {
         foreach (Transform child in parentGameObject.transform)
         {
+            child.gameObject.SetActive(true);
             SkinnedMeshRenderer smr = child.gameObject.GetComponent<SkinnedMeshRenderer>();
             Texture2D tmp;
             if (smr && smr.sharedMaterial.shader.name != "Sprites/Default")
             {
-                if (smr.sharedMaterial.GetTexture("_MainTex") && map.TryGetValue(smr.sharedMaterial.GetTexture("_MainTex").name, out tmp))
+                if (smr.sharedMaterial.GetTexture("_MainTex"))
                 {
-                    smr.sharedMaterial.SetTexture("_MainTex", tmp);
+                    string m_name = smr.sharedMaterial.GetTexture("_MainTex").name;
+                    if (map.TryGetValue(m_name, out tmp))
+                    {
+                        smr.sharedMaterial.SetTexture("_MainTex", tmp);
+                    }
+                    else
+                    {
+                        MessageBox(IntPtr.Zero, m_name + "不存在，可能会无法正常显示！", "错误", 0x00000010);
+                    }
                 }
-                Debug.Log(smr.sharedMaterial.GetTexture("_MainTex"));
+                //Debug.Log(smr.sharedMaterial.GetTexture("_MainTex"));
                 smr.sharedMaterial.shader = Shader.Find("Sprites/Default");
             }
             SpriteRenderer sr = child.gameObject.GetComponent<SpriteRenderer>();
             if (sr)
             {
-                if (sr.sharedMaterial.GetTexture("_MainTex") && map.TryGetValue(sr.sharedMaterial.GetTexture("_MainTex").name, out tmp))
+                if (sr.sharedMaterial.GetTexture("_MainTex"))
                 {
-                    sr.sharedMaterial.SetTexture("_MainTex", tmp);
+                    string m_name = sr.sharedMaterial.GetTexture("_MainTex").name;
+                    if (map.TryGetValue(m_name, out tmp))
+                    {
+                        sr.sharedMaterial.SetTexture("_MainTex", tmp);
+                    }
+                    else
+                    {
+                        MessageBox(IntPtr.Zero, m_name + "不存在，可能会无法正常显示！", "错误", 0x00000010);
+                    }
                 }
-                Debug.Log(sr.sharedMaterial.GetTexture("_MainTex"));
-                // Texture test = sr.sprite.texture;
-                // test = tex;
+                //Debug.Log(sr.sharedMaterial.GetTexture("_MainTex"));
                 if (sr.sprite && map.TryGetValue(sr.sprite.texture.name, out tmp))
                 {
                     sr.sprite = Sprite.Create(tmp, sr.sprite.rect, new Vector2(0.5f, 0.5f));
-                    // sr.sprite = Sprite.Create(tex, sr.sprite.rect, sr.sprite.pivot);
                 }
                 sr.sharedMaterial.shader = Shader.Find("Sprites/Default");
             }
-            RecursiveV2(child.gameObject, map);
+            ParticleSystem ps = child.gameObject.GetComponent<ParticleSystem>();
+            if(ps)
+            {
+                Renderer rd = ps.GetComponent<Renderer>();
+                rd.sharedMaterial = Default_Particle;
+                //rd.sharedMaterial = new Material(Shader.Find("Particle/Default"));
+            }
+            if(smr || sr || ps)
+            {
+                Tree.Add(new UITreeData(child.name, child.gameObject));
+            }
+            PrefabRecursive(child.gameObject, map, Tree);
         }
     }
 
@@ -180,14 +195,55 @@ public class MyMain : MonoBehaviour
         return folder.Select(x => x.FullName).ToList();
     }
 
-
-    public InputField FolderPathInput;
+    public InputField AssetPathInput;
     public Transform pos;
+    public Toggle SaveSheck;
+    private Material Default_Particle;
+    public UITree UITree = null;
 
+    private Stack<GameObject> Live2dObj = new Stack<GameObject>();
     // Start is called before the first frame update
     void Start()
     {
-        
+        AssetPathInput.text = @"E:\Documents\Tencent Files\1094766238\FileRecv\__data(2)";
+        Default_Particle = pos.gameObject.GetComponent<ParticleSystem>().GetComponent<Renderer>().sharedMaterial;
+        UnityDragAndDropHook.InstallHook();
+        UnityDragAndDropHook.OnDroppedFiles += OnFiles;
+
+        var data = new UITreeData("SpringGUI", new List<UITreeData>()
+        {
+            new UITreeData("Button",new List<UITreeData>()
+            {
+                new UITreeData("DoubleClickButton"),
+                new UITreeData("LongClickButton")
+            }),
+            new UITreeData("Pie"),
+            new UITreeData("DatePicker"),
+            new UITreeData("C#",new List<UITreeData>()
+            {
+                new UITreeData("high-level syntax",new List<UITreeData>()
+                {
+                    new UITreeData("Action",new List<UITreeData>()
+                        {
+                            new UITreeData("One parameter"),
+                            new UITreeData("Two parameter"),
+                            new UITreeData("Three parameter"),
+                            new UITreeData("Four parameter"),
+                            new UITreeData("Five parameter")
+                        }),
+                    new UITreeData("Func"),
+                    new UITreeData("delegate")
+                }),
+                new UITreeData("Reflect")
+            })
+        });
+        //UITree.SetData(data);
+        // UITree.Inject(data);
+    }
+
+    void OnDisable()
+    {
+        UnityDragAndDropHook.UninstallHook();
     }
 
     // Update is called once per frame
@@ -196,151 +252,111 @@ public class MyMain : MonoBehaviour
 
     }
 
+    void OnFiles(List<string> aFiles, POINT aPos)
+    {
+        // do something with the dropped file names. aPos will contain the 
+        // mouse position within the window where the files has been dropped.
+        AssetPathInput.text = aFiles[0];
+    }
+
     public void PreView()
     {
-        List<string> AssetPaths = new List<string>();
+        ClearObj();
         Dictionary<string, Texture2D> TextureMap = new Dictionary<string, Texture2D>();
-        foreach (string file in GetAllFileNames(FolderPathInput.text))
+
+        AssetBundle.UnloadAllAssetBundles(true);
+        string AssetPath = AssetPathInput.text;
+        string FolderPath = Path.GetDirectoryName(AssetPath);
+
+        var MyAssetsManager = new AssetStudio.AssetsManager();
+        MyAssetsManager.LoadFiles(AssetPath);
+        foreach (var assetsFile in MyAssetsManager.assetsFileList)
         {
-            if (Path.GetExtension(file) == ".png")
+            foreach (var asset in assetsFile.Objects)
             {
-                TextureMap.Add(Path.GetFileNameWithoutExtension(file), LoadPNG(file));
-            }
-            else
-            {
-                AssetPaths.Add(file);
+                if (asset is AssetStudio.Texture2D)
+                {
+                    AssetStudio.Texture2D texture = (AssetStudio.Texture2D)asset;
+
+                    var bitmap = new AssetStudio.Texture2DConverter(texture).ConvertToBitmap();
+                    MemoryStream ms = new MemoryStream();
+                    bitmap.Save(ms, ImageFormat.Png);
+                    TextureMap.Add(texture.m_Name, LoadPNG(ms.ToArray()));
+                    if(SaveSheck.isOn)
+                    {
+                        bitmap.Save(Path.Combine(FolderPath, texture.m_Name + ".png"), ImageFormat.Png);
+                    }
+                }
             }
         }
-        foreach (string AssetPath in AssetPaths)
+
+        AssetBundle ab = MyGetAssetBundle(AssetPath);
+        if (!ab)
         {
-            AssetBundle ab = AssetBundle.LoadFromFile(AssetPath);
-            Debug.Log(ab);
-            if (!ab)
+            MessageBox(IntPtr.Zero, "AssetBundle文件加载失败！", "错误", 0x00000010);
+            return;
+        }
+        string[] ab_path = ab.GetAllAssetNames();
+        if (ab_path.Length > 1)
+        {
+            MessageBox(IntPtr.Zero, "该包可能包含多个模型，此情况暂未处理！", "错误", 0x00000010);
+            return;
+        }
+        GameObject prefab = ab.LoadAsset<GameObject>(ab_path[0]);
+        GameObject gob = Instantiate(prefab, pos.position, pos.rotation);
+        List<UITreeData> MyTree = new List<UITreeData>();
+        PrefabRecursive(gob, TextureMap, MyTree);
+        UITree.Inject(MyTree);
+        Live2dObj.Push(gob);
+    }
+
+    private AssetBundle MyGetAssetBundle(string AssetPath)
+    {
+        List<string> AssetPaths = new List<string>();
+        byte[] buf;
+        int pos = 0;
+        Header m_Header = new Header();
+        using (var reader = new BinaryReader(new FileStream(AssetPath, FileMode.Open)))
+        {
+            string signature = reader.ReadStringToNull();
+            if (signature != "UnityFS")
             {
-                MessageBox(IntPtr.Zero, "AssetBundle文件加载失败，可能是平台不对，请转换成windows平台再进行尝试！", "错误", 0x00000010);
-                return;
+                MessageBox(IntPtr.Zero, AssetPath + "文件不为AssetBundle！", "错误", 0x00000010);
+                return null;
             }
-            string[] ab_path = ab.GetAllAssetNames();
-            if (ab_path.Length > 1)
-            {
-                MessageBox(IntPtr.Zero, "该包可能包含多个模型，此情况暂未处理！", "错误", 0x00000010);
-                return;
-            }
-            GameObject prefab = ab.LoadAsset<GameObject>(ab_path[0]);
-            RecursiveV2(prefab, TextureMap);
-            GameObject gob = Instantiate(prefab, pos.position, pos.rotation);
+            m_Header.signature = signature;
+            m_Header.version = reader.ReadUInt32();
+            m_Header.unityVersion = reader.ReadByteToNull();
+            m_Header.unityRevision = reader.ReadByteToNull();
+            pos = (int)reader.BaseStream.Position;
+            reader.BaseStream.Seek(0, SeekOrigin.Begin);
+            buf = new byte[reader.BaseStream.Length];
+            var len = (int)reader.BaseStream.Length;
+            reader.Read(buf, 0, len);
+        }
+        int idx = IndexOf(buf, m_Header.unityRevision, pos);
+        if (buf[idx + m_Header.unityRevision.Length + 1] == 0xd)
+        {
+            buf[idx + m_Header.unityRevision.Length + 1] = 0x13;
+        }
+        if (buf[idx + m_Header.unityRevision.Length + 1] != 0x13)
+        {
+            MessageBox(IntPtr.Zero, AssetPath + "为未知平台！", "错误", 0x00000010);
+            return null;
+        }
+        return AssetBundle.LoadFromMemory(buf);
+    }
+    public void ClearObj()
+    {
+        while(Live2dObj.Count > 0)
+        {
+            GameObject obj = Live2dObj.Pop();
+            Destroy(obj);
         }
     }
 
-    public void AndroidToWin64()
+    public void Test()
     {
-        List<string> AssetPaths = new List<string>();
-        Dictionary<string, Texture2D> TextureMap = new Dictionary<string, Texture2D>();
-        foreach (string file in GetAllFileNames(FolderPathInput.text))
-        {
-            if (Path.GetExtension(file) == ".png")
-            {
-                TextureMap.Add(Path.GetFileNameWithoutExtension(file), LoadPNG(file));
-            }
-            else
-            {
-                AssetPaths.Add(file);
-            }
-        }
-        foreach (string AssetPath in AssetPaths)
-        {
-            byte[] buf;
-            int pos = 0;
-            Header m_Header = new Header();
-            using (var reader = new BinaryReader(new FileStream(AssetPath, FileMode.Open)))
-            {
-                string signature = reader.ReadStringToNull();
-                if (signature != "UnityFS")
-                {
-                    MessageBox(IntPtr.Zero, AssetPath + "文件不为AssetBundle！", "错误", 0x00000010);
-                    continue;
-                }
-                m_Header.signature = signature;
-                m_Header.version = reader.ReadUInt32();
-                m_Header.unityVersion = reader.ReadByteToNull();
-                m_Header.unityRevision = reader.ReadByteToNull();
-                pos = (int)reader.BaseStream.Position;
-                reader.BaseStream.Seek(0, SeekOrigin.Begin);
-                buf = new byte[reader.BaseStream.Length];
-                var len = (int)reader.BaseStream.Length;
-                reader.Read(buf, 0, len);
-            }
-            int idx = IndexOf(buf, m_Header.unityRevision, pos);
-            if (buf[idx + m_Header.unityRevision.Length + 1] == 0xd)
-            {
-                buf[idx + m_Header.unityRevision.Length + 1] = 0x13;
-            }
-            else
-            {
-                MessageBox(IntPtr.Zero, AssetPath + "不为Android平台！", "错误", 0x00000010);
-                continue;
-            }
-            using (var fs = new FileStream(AssetPath, FileMode.Create))
-            {
-                fs.Write(buf, 0, buf.Length);
-            }
-            MessageBox(IntPtr.Zero, AssetPath + "成功转换为Win64平台！", "信息", 0);
-        }
-    }
-
-    public void Win64ToAndroid()
-    {
-        List<string> AssetPaths = new List<string>();
-        Dictionary<string, Texture2D> TextureMap = new Dictionary<string, Texture2D>();
-        foreach (string file in GetAllFileNames(FolderPathInput.text))
-        {
-            if (Path.GetExtension(file) == ".png")
-            {
-                TextureMap.Add(Path.GetFileNameWithoutExtension(file), LoadPNG(file));
-            }
-            else
-            {
-                AssetPaths.Add(file);
-            }
-        }
-        foreach (string AssetPath in AssetPaths)
-        {
-            byte[] buf;
-            int pos = 0;
-            Header m_Header = new Header();
-            using (var reader = new BinaryReader(new FileStream(AssetPath, FileMode.Open)))
-            {
-                string signature = reader.ReadStringToNull();
-                if (signature != "UnityFS")
-                {
-                    MessageBox(IntPtr.Zero, AssetPath + "文件不为AssetBundle！", "错误", 0x00000010);
-                    continue;
-                }
-                m_Header.signature = signature;
-                m_Header.version = reader.ReadUInt32();
-                m_Header.unityVersion = reader.ReadByteToNull();
-                m_Header.unityRevision = reader.ReadByteToNull();
-                pos = (int)reader.BaseStream.Position;
-                reader.BaseStream.Seek(0, SeekOrigin.Begin);
-                buf = new byte[reader.BaseStream.Length];
-                var len = (int)reader.BaseStream.Length;
-                reader.Read(buf, 0, len);
-            }
-            int idx = IndexOf(buf, m_Header.unityRevision, pos);
-            if (buf[idx + m_Header.unityRevision.Length + 1] == 0xd)
-            {
-                buf[idx + m_Header.unityRevision.Length + 1] = 0x13;
-            }
-            else
-            {
-                MessageBox(IntPtr.Zero, AssetPath + "不为Win64平台！", "错误", 0x00000010);
-                continue;
-            }
-            using (var fs = new FileStream(AssetPath, FileMode.Create))
-            {
-                fs.Write(buf, 0, buf.Length);
-            }
-            MessageBox(IntPtr.Zero, AssetPath + "成功转换为Android平台！", "信息", 0);
-        }
+        Debug.Log("test");
     }
 }
