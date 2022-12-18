@@ -46,25 +46,7 @@ public class MyInput : MonoBehaviour
         return tex;
     }
 
-    public void PrintScreen()
-    {
-        int width = 1920;
-        int height = 1920;
-        RenderTexture rt = new RenderTexture(width, height, 0);
-        camera.targetTexture = rt;
-        camera.Render();
-        RenderTexture.active = rt;
-        Texture2D screenShot = new Texture2D(width, height, TextureFormat.RGB24, false);
-        screenShot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-        screenShot.Apply();
-        camera.targetTexture = null;
-        RenderTexture.active = null;
-        Destroy(rt);
-        byte[] bytes = screenShot.EncodeToJPG();
-        string filePath = Application.streamingAssetsPath + "/Print" + index + ".jpg";
-        File.WriteAllBytes(filePath, bytes);
-        //RefreshPrint(filePath, images[index]);
-    }
+    
     private void RefreshPrint(string filePaht, Image image)
     {
         FileStream fileStream = new FileStream(filePaht, FileMode.Open, FileAccess.Read);
@@ -140,7 +122,6 @@ public class MyInput : MonoBehaviour
                     //gob.transform.position.Set(0,10,0);
                 }
             }
-            PrintScreen();
         }
     }
 

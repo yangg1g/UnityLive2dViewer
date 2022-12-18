@@ -12,7 +12,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using B83.Win32;
 using SpringGUI;
-
+using Gif.Components;
 public static class BinaryReaderExtensions
 {
     public static string ReadStringToNull(this BinaryReader reader, int maxLength = 32767)
@@ -111,6 +111,7 @@ public class MyMain : MonoBehaviour
         return tex;
     }
 
+    private Animator animatior = null;
     public Material FindMatrial(string name)
     {
         Type type = Type.GetType("UnityEngine.Material,UnityEngine.dll");
@@ -180,12 +181,132 @@ public class MyMain : MonoBehaviour
                 rd.sharedMaterial = Default_Particle;
                 //rd.sharedMaterial = new Material(Shader.Find("Particle/Default"));
             }
-            if(smr || sr || ps)
+            if (smr || sr || ps)
             {
                 Tree.Add(new UITreeData(child.name, child.gameObject));
             }
             PrefabRecursive(child.gameObject, map, Tree);
         }
+    }
+
+    void PrefabRecursive2(GameObject parentGameObject, Dictionary<string, Texture2D> map)
+    {
+        foreach (Transform child in parentGameObject.transform)
+        {
+            child.gameObject.SetActive(true);
+            Animator am = child.gameObject.GetComponent<Animator>();
+            if (am)
+            {
+                foreach (AnimationClip ac in am.runtimeAnimatorController.animationClips)
+                {
+                    ac.wrapMode = WrapMode.ClampForever;
+                    Anim.options.Add(new Dropdown.OptionData(ac.name));
+                }
+            }
+            SkinnedMeshRenderer smr = child.gameObject.GetComponent<SkinnedMeshRenderer>();
+            Texture2D tmp;
+            if (smr && smr.sharedMaterial.shader.name != "Sprites/Default")
+            {
+                if (smr.sharedMaterial.GetTexture("_MainTex"))
+                {
+                    string m_name = smr.sharedMaterial.GetTexture("_MainTex").name;
+                    if (map.TryGetValue(m_name, out tmp))
+                    {
+                        smr.sharedMaterial.SetTexture("_MainTex", tmp);
+                    }
+                    else
+                    {
+                        MessageBox(IntPtr.Zero, m_name + "不存在，可能会无法正常显示！", "错误", 0x00000010);
+                    }
+                }
+                //Debug.Log(smr.sharedMaterial.GetTexture("_MainTex"));
+                smr.sharedMaterial.shader = Shader.Find("Sprites/Default");
+            }
+            SpriteRenderer sr = child.gameObject.GetComponent<SpriteRenderer>();
+            if (sr)
+            {
+                if (sr.sharedMaterial.GetTexture("_MainTex"))
+                {
+                    string m_name = sr.sharedMaterial.GetTexture("_MainTex").name;
+                    if (map.TryGetValue(m_name, out tmp))
+                    {
+                        sr.sharedMaterial.SetTexture("_MainTex", tmp);
+                    }
+                    else
+                    {
+                        MessageBox(IntPtr.Zero, m_name + "不存在，可能会无法正常显示！", "错误", 0x00000010);
+                    }
+                }
+                //Debug.Log(sr.sharedMaterial.GetTexture("_MainTex"));
+                if (sr.sprite && map.TryGetValue(sr.sprite.texture.name, out tmp))
+                {
+                    sr.sprite = Sprite.Create(tmp, sr.sprite.rect, new Vector2(0.5f, 0.5f));
+                }
+                sr.sharedMaterial.shader = Shader.Find("Sprites/Default");
+            }
+            ParticleSystem ps = child.gameObject.GetComponent<ParticleSystem>();
+            if (ps)
+            {
+                Renderer rd = ps.GetComponent<Renderer>();
+                rd.sharedMaterial = Default_Particle;
+                //rd.sharedMaterial = new Material(Shader.Find("Particle/Default"));
+            }
+            PrefabRecursive2(child.gameObject, map);
+        }
+    }
+
+    void GameObjRecursive(GameObject parentGameObject, List<UITreeData> Tree)
+    {
+        foreach (Transform child in parentGameObject.transform)
+        {
+            Animator am = child.gameObject.GetComponent<Animator>();
+            if (am)
+            {
+                animatior = am;
+                List<AnimationClip> ani_list = new List<AnimationClip>();
+                foreach (AnimationClip ac in animatior.runtimeAnimatorController.animationClips)
+                {
+                    ac.wrapMode = WrapMode.ClampForever;
+                    ani_list.Add(ac);
+                    //Debug.Log(ac);
+                }
+                AnimatorOverrideController aoc = new AnimatorOverrideController(animatior.runtimeAnimatorController);
+                var anims = new List<KeyValuePair<AnimationClip, AnimationClip>>();
+                foreach (var a in aoc.animationClips)
+                    anims.Add(new KeyValuePair<AnimationClip, AnimationClip>(a, ani_list[Anim.value]));
+                aoc.ApplyOverrides(anims);
+                animatior.runtimeAnimatorController = aoc;
+            }
+            SkinnedMeshRenderer smr = child.gameObject.GetComponent<SkinnedMeshRenderer>();
+            SpriteRenderer sr = child.gameObject.GetComponent<SpriteRenderer>();
+            ParticleSystem ps = child.gameObject.GetComponent<ParticleSystem>();
+            if (smr || sr || ps)
+            {
+                Tree.Add(new UITreeData(child.name, child.gameObject));
+            }
+            GameObjRecursive(child.gameObject, Tree);
+        }
+    }
+
+    public Camera camera;
+    public void PrintScreen(string filePath)
+    {
+        int accuracy = int.Parse(this.transform.Find("Accuracy").GetComponent<InputField>().text);
+        int width = Screen.width * accuracy;
+        int height = Screen.height * accuracy;
+        RenderTexture rt = new RenderTexture(width, height, 32, RenderTextureFormat.ARGBFloat);
+        camera.targetTexture = rt;
+        camera.Render();
+        RenderTexture.active = rt;
+        Texture2D screenShot = new Texture2D(width, height, TextureFormat.ARGB32, false);
+        screenShot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        screenShot.Apply();
+        camera.targetTexture = null;
+        RenderTexture.active = null;
+        Destroy(rt);
+        byte[] bytes = screenShot.EncodeToPNG();
+        File.WriteAllBytes(filePath, bytes);
+        //RefreshPrint(filePath, images[index]);
     }
 
     List<string> GetAllFileNames(string path, string pattern = "*")
@@ -200,43 +321,23 @@ public class MyMain : MonoBehaviour
     public Toggle SaveSheck;
     private Material Default_Particle;
     public UITree UITree = null;
+    public Dropdown Anim;
 
     private Stack<GameObject> Live2dObj = new Stack<GameObject>();
     // Start is called before the first frame update
     void Start()
     {
-        AssetPathInput.text = @"E:\Documents\Tencent Files\1094766238\FileRecv\__data(2)";
+        AssetPathInput.text = @"D:\touchfish\the_unity\test.ab";
         Default_Particle = pos.gameObject.GetComponent<ParticleSystem>().GetComponent<Renderer>().sharedMaterial;
         UnityDragAndDropHook.InstallHook();
         UnityDragAndDropHook.OnDroppedFiles += OnFiles;
-
-        var data = new UITreeData("SpringGUI", new List<UITreeData>()
+        List<string> imageFilePaths = new List<string>();
+        for(int i=0;i<10;i++)
         {
-            new UITreeData("Button",new List<UITreeData>()
-            {
-                new UITreeData("DoubleClickButton"),
-                new UITreeData("LongClickButton")
-            }),
-            new UITreeData("Pie"),
-            new UITreeData("DatePicker"),
-            new UITreeData("C#",new List<UITreeData>()
-            {
-                new UITreeData("high-level syntax",new List<UITreeData>()
-                {
-                    new UITreeData("Action",new List<UITreeData>()
-                        {
-                            new UITreeData("One parameter"),
-                            new UITreeData("Two parameter"),
-                            new UITreeData("Three parameter"),
-                            new UITreeData("Four parameter"),
-                            new UITreeData("Five parameter")
-                        }),
-                    new UITreeData("Func"),
-                    new UITreeData("delegate")
-                }),
-                new UITreeData("Reflect")
-            })
-        });
+            imageFilePaths.Add(@"D:\screem\" + i + ".png");
+        }
+        //string AssetPath = this.transform.Find("AssetPath").GetComponent<InputField>().text;
+        //ConvertJpgToGif(imageFilePaths.ToArray(), @"D:\test.gif", 1);
         //UITree.SetData(data);
         // UITree.Inject(data);
     }
@@ -246,10 +347,74 @@ public class MyMain : MonoBehaviour
         UnityDragAndDropHook.UninstallHook();
     }
 
+    public bool ConvertJpgToGif(string[] imageFilePaths, string gifPath, int time)
+    {
+        try
+        {
+            AnimatedGifEncoder e = new AnimatedGifEncoder();
+            e.SetDelay(time);
+            e.Start(gifPath);
+            //0:循环播放    -1:不循环播放
+            e.SetRepeat(0);
+            for (int i = 0, count = imageFilePaths.Length; i < count; i++)
+            {
+                //e.AddFrame(Image.FromFile(Server.MapPath(imageFilePaths[i])));
+
+                System.Drawing.Image img = System.Drawing.Image.FromFile(imageFilePaths[i]);
+                //如果多张图片的高度和宽度都不一样，可以打开这个注释
+                //img = ReSetPicSize(img, w, h);
+                e.AddFrame(img);
+            }
+            e.Finish();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            return false;
+        }
+    }
+
+    private AnimatedGifEncoder GifEncoder = new AnimatedGifEncoder();
+    int index = -1;
     // Update is called once per frame
     void Update()
     {
-
+        if(animatior && index >= 0)
+        {
+            AnimatorStateInfo animationState = animatior.GetCurrentAnimatorStateInfo(0);
+            AnimatorClipInfo[] myAnimatorClip = animatior.GetCurrentAnimatorClipInfo(0);
+            float myTime = myAnimatorClip[0].clip.length * animationState.normalizedTime;
+            int frame = int.Parse(this.transform.Find("Frame").GetComponent<InputField>().text);
+            if (animationState.normalizedTime > index / frame)
+            {
+                if(index == 0 && this.transform.Find("GenGif").GetComponent<Toggle>().isOn)
+                {
+                    GifEncoder.Start(Path.GetDirectoryName(AssetPathInput.text) + "\\" + Anim.options[Anim.value].text + ".gif");
+                    GifEncoder.SetRepeat(0);
+                    GifEncoder.SetDelay(Convert.ToInt16(animationState.normalizedTime / frame * 1000));
+                }
+                string picPath = Path.GetDirectoryName(AssetPathInput.text) + "\\" + Anim.options[Anim.value].text;
+                if (!Directory.Exists(picPath))
+                {
+                    Directory.CreateDirectory(picPath);
+                }
+                PrintScreen(picPath+ "\\" + index + ".png");
+                if(this.transform.Find("GenGif").GetComponent<Toggle>().isOn)
+                {
+                    System.Drawing.Image img = System.Drawing.Image.FromFile(picPath + "\\" + index + ".png");
+                    GifEncoder.AddFrame(img);
+                }
+                index++;
+                if (index == frame)
+                {
+                    index = -1;
+                    GifEncoder.Finish();
+                    MessageBox(IntPtr.Zero, "已成功生成gif到" + Path.GetDirectoryName(AssetPathInput.text) + "！", "信息", 0x00000000);
+                }
+            }
+            // Debug.Log(myTime);
+        }
     }
 
     void OnFiles(List<string> aFiles, POINT aPos)
@@ -258,7 +423,7 @@ public class MyMain : MonoBehaviour
         // mouse position within the window where the files has been dropped.
         AssetPathInput.text = aFiles[0];
     }
-
+    private GameObject NowPrefab = null;
     public void PreView()
     {
         ClearObj();
@@ -302,10 +467,13 @@ public class MyMain : MonoBehaviour
             MessageBox(IntPtr.Zero, "该包可能包含多个模型，此情况暂未处理！", "错误", 0x00000010);
             return;
         }
-        GameObject prefab = ab.LoadAsset<GameObject>(ab_path[0]);
-        GameObject gob = Instantiate(prefab, pos.position, pos.rotation);
+        Anim.ClearOptions();
+        NowPrefab = ab.LoadAsset<GameObject>(ab_path[0]);
+        PrefabRecursive2(NowPrefab, TextureMap);
+        GameObject gob = Instantiate(NowPrefab, pos.position, pos.rotation);
         List<UITreeData> MyTree = new List<UITreeData>();
-        PrefabRecursive(gob, TextureMap, MyTree);
+        // PrefabRecursive(gob, TextureMap, MyTree);
+        GameObjRecursive(gob, MyTree);
         UITree.Inject(MyTree);
         Live2dObj.Push(gob);
     }
@@ -358,5 +526,18 @@ public class MyMain : MonoBehaviour
     public void Test()
     {
         Debug.Log("test");
+    }
+    public void ResetObj()
+    {
+        ClearObj();
+        GameObject gob = Instantiate(NowPrefab, pos.position, pos.rotation);
+        List<UITreeData> MyTree = new List<UITreeData>();
+        GameObjRecursive(gob, MyTree);
+        UITree.Inject(MyTree);
+        Live2dObj.Push(gob);
+        if ((this.transform.Find("GenGif").GetComponent<Toggle>().isOn || this.transform.Find("GenPng").GetComponent<Toggle>().isOn) && index == -1)
+        {
+            index = 0;
+        }
     }
 }
